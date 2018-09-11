@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/stevespringett/Alpine.svg?branch=master)](https://travis-ci.org/stevespringett/Alpine)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/cefa2866cbc24deeb7fbc83b8f71ad60)](https://www.codacy.com/app/stevespringett/Alpine?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=stevespringett/Alpine&amp;utm_campaign=Badge_Grade)
-[![Dependency Status](https://www.versioneye.com/user/projects/58a2a49a0f3d4f003ce97f07/badge.svg?style=flat)](https://www.versioneye.com/user/projects/58a2a49a0f3d4f003ce97f07)
+[![Dependency Status](https://img.shields.io/librariesio/github/stevespringett/Alpine.svg)](https://libraries.io/github/stevespringett/Alpine)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/690/badge)](https://bestpractices.coreinfrastructure.org/projects/690)
 [![License][license-image]][license-url]
 [![Join the chat at https://gitter.im/java-alpine/Lobby](https://badges.gitter.im/java-alpine/Lobby.svg)](https://gitter.im/java-alpine/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -11,7 +11,7 @@
 Alpine
 =========
 
-An opinionated scaffolding library that jumpstarts Java projects with an 
+An opinionated scaffolding library that jump-starts Java projects with an 
 API-first design, secure defaults, and minimal dependencies. Alpine came 
 about due to many commonalities between several of my personal and 
 professional projects.
@@ -87,12 +87,14 @@ The following features are free and require little or no coding just for using A
 * Separate application and audit logs
 * Scheduled and on-demand execution of parallel tasks via asynchronous pub/sub event framework
 * Extendable and centralized application configuration
+* Lightweight upgrade framework can optionally perform automatic upgrades on startup
 * Built-in input validation (JSR 303 & 349) for all REST resources and default model classes
 * Defensive security mechanisms for enabling:
   * Click-jacking protection (X-Frame-Options) (RFC-7034)
   * Content Security Policy (Level 1 and 2)
   * HTTP Public Key Pinning (HPKP) (RFC-7469)
   * HTTP Strict Transport Security (HSTS) (RFC-6797)
+  * Whitelist and Blacklist URL filters
 
 Build Features
 -
@@ -100,6 +102,7 @@ Build Features
 These build-time features are inherited simply by using the Alpine pom
 * Simplifies dependency management. Simply including Alpine as a dependency is all that's required
 * Analysis of third-party components for known vulnerabilities via OWASP Dependency-Check & Retire.js
+* Automatic creation of CycloneDX BoM incorporating all direct and transitive dependencies used
 * Support for HPE Fortify Source Code Analyzer (SCA) (requires Fortify license to use)
 * Alpine apps are automatically built as WARs
 * Optional packaging as an executable WAR containing an embedded Jetty container
@@ -113,9 +116,6 @@ mvn clean install
 
 Maven Usage
 -------------------
-Alpine is currently pre-release software but snapshot builds can be used and 
-are available on the Maven Central Repository. These can be used without having
-to compile Alpine yourself.
 
 ```xml
 <!-- Place the parent right after the <project> root node
@@ -123,7 +123,7 @@ to compile Alpine yourself.
 <parent>
     <groupId>us.springett</groupId>
     <artifactId>alpine-parent</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.3.0</version>
 </parent>
 
 <dependencies>
@@ -131,7 +131,7 @@ to compile Alpine yourself.
     <dependency>
         <groupId>us.springett</groupId>
         <artifactId>alpine</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.3.0</version>
     </dependency>
 </dependencies>
 ```
@@ -171,7 +171,7 @@ If your open source or commercial project is using Alpine, feel free to add its
 name:
 
 * [Hakbot Origin Controller](https://github.com/hakbot/hakbot-origin-controller)
-* [OWASP Dependency-Track](https://www.owasp.org/index.php/OWASP_Dependency_Track_Project)
+* [OWASP Dependency-Track](https://dependencytrack.org)
 
 Copyright & License
 -
@@ -179,10 +179,10 @@ Copyright & License
 Alpine is Copyright (c) Steve Springett. All Rights Reserved.
 
 Permission to modify and redistribute is granted under the terms of the 
-[Apache License 2.0] [license-url]
+[Apache License 2.0](https://github.com/stevespringett/alpine/blob/master/LICENSE.txt)
 
 Alpine makes use of several other open source libraries. Please see
-the [NOTICE.txt] [notice] file for more information.
+the [NOTICE.txt](https://github.com/stevespringett/alpine/blob/master/NOTICE.txt) file for more information.
 
   [alpine-image]: http://6000rpms.com/images/Alpine.svg
   [GitHub Wiki]: https://github.com/stevespringett/alpine/wiki
@@ -191,4 +191,3 @@ the [NOTICE.txt] [notice] file for more information.
   [fortify-image]: https://img.shields.io/badge/static%20analysis-fortify%20sca-blue.svg
   [odc-image]: https://img.shields.io/badge/component%20analysis-owasp%20dependency--check-blue.svg
   [odc-url]: https://www.owasp.org/index.php/OWASP_Dependency_Check
-  [notice]: https://github.com/stevespringett/alpine/blob/master/NOTICE.txt

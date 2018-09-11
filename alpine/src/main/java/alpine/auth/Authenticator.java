@@ -18,7 +18,6 @@
 package alpine.auth;
 
 import alpine.Config;
-import javax.naming.AuthenticationException;
 import java.security.Principal;
 
 /**
@@ -53,22 +52,30 @@ public class Authenticator {
      * checks to see if LDAP is enabled or not. If enabled, a second attempt to authenticate
      * the credentials will be made, but this time against the directory service.
      * @return a Principal upon successful authentication
-     * @throws AuthenticationException upon authentication failure
+     * @throws AlpineAuthenticationException upon authentication failure
      * @since 1.0.0
      */
-    public Principal authenticate() throws AuthenticationException {
+    public Principal authenticate() throws AlpineAuthenticationException {
         final ManagedUserAuthenticationService userService = new ManagedUserAuthenticationService(username, password);
-        try {
-            final Principal principal = userService.authenticate();
-            if (principal != null) {
-                return principal;
+        try{
+	        final Principal principal = userService.authenticate();
+	        if (principal != null) {
+	            return principal;
+	        }
+        }catch(AlpineAuthenticationException e){
+            // If LDAP is enabled, a second attempt to authenticate the credentials will be
+            // made against LDAP so we skip this validation exception. However, if the ManagedUser does exist, 
+            // return the correct error
+            if (!LDAP_ENABLED || (e.getCauseType() != AlpineAuthenticationException.CauseType.INVALID_CREDENTIALS)){
+                throw e;
             }
-        } catch (AuthenticationException e) { }
+        }
         if (LDAP_ENABLED) {
             final LdapAuthenticationService ldapService = new LdapAuthenticationService(username, password);
             return ldapService.authenticate();
         }
-        throw new AuthenticationException("Username or password is not valid, or the account is suspended.");
+        // This should never happen, but do not want to return null
+        throw new AlpineAuthenticationException(AlpineAuthenticationException.CauseType.OTHER);
     }
 
 }

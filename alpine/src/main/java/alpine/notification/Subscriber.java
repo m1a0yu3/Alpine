@@ -15,19 +15,22 @@
  *
  * Copyright (c) Steve Springett. All Rights Reserved.
  */
-package alpine.auth;
+package alpine.notification;
 
 /**
- * Contains Permission constants. This class is intended to be extended to
- * allow for defining of additional permissions.
+ * All subscribers need to implement this interface. Subscribers are informed
+ * of events they are subscribed to via the inform method.
  *
  * @author Steve Springett
- * @since 1.0.0
+ * @since 1.3.0
  */
-public abstract class AlpinePermission {
+public interface Subscriber {
 
-    public static final String MANAGE_API_KEYS = "MANAGE_API_KEYS";
-    public static final String MANAGE_TEAMS = "MANAGE_TEAMS";
-    public static final String MANAGE_USERS = "MANAGE_USERS";
+    /**
+     * Defines a method to inform subscribers who implement this interface.
+     * @param notification the Event to subscribe to
+     * @since 1.3.0
+     */
+    void inform(Notification notification);
 
 }

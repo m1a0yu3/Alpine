@@ -33,7 +33,7 @@ public final class BooleanUtil {
     }
 
     /**
-     * Determines if the specified string contains 'true' or '1'.
+     * Determines if the specified string contains 'true' or '1'
      * @param value a String representation of a boolean to convert
      * @return a boolean
      * @since 1.0.0

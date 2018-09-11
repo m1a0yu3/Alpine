@@ -34,6 +34,7 @@ import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.io.Serializable;
 import java.security.Principal;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -49,7 +50,7 @@ public class ManagedUser implements Serializable, Principal, UserPrincipal {
     private static final long serialVersionUID = 7944779964068911025L;
 
     @PrimaryKey
-    @Persistent(valueStrategy = IdGeneratorStrategy.INCREMENT)
+    @Persistent(valueStrategy = IdGeneratorStrategy.NATIVE)
     @JsonIgnore
     private long id;
 
@@ -69,15 +70,54 @@ public class ManagedUser implements Serializable, Principal, UserPrincipal {
     @JsonIgnore
     private String password;
 
+    @Size(max = 255)
+    @Pattern(regexp = "[\\P{Cc}]+", message = "The new password must not contain control characters")
+    private transient String newPassword; // not persisted
+
+    @Size(max = 255)
+    @Pattern(regexp = "[\\P{Cc}]+", message = "The confirm password must not contain control characters")
+    private transient String confirmPassword; // not persisted
+
+    @Persistent
+    @Column(name = "LAST_PASSWORD_CHANGE", allowsNull = "false")
+    @NotNull
+    private Date lastPasswordChange;
+
+    @Persistent
+    @Column(name = "FULLNAME")
+    @Size(max = 255)
+    @Pattern(regexp = "[\\P{Cc}]+", message = "The full name must not contain control characters")
+    private String fullname;
+
+    @Persistent
+    @Column(name = "EMAIL")
+    @Size(max = 255)
+    @Pattern(regexp = "[\\P{Cc}]+", message = "The email address must not contain control characters")
+    private String email;
+
     @Persistent
     @Column(name = "SUSPENDED")
     private boolean suspended;
+
+    @Persistent
+    @Column(name = "FORCE_PASSWORD_CHANGE")
+    private boolean forcePasswordChange;
+
+    @Persistent
+    @Column(name = "NON_EXPIRY_PASSWORD")
+    private boolean nonExpiryPassword;
 
     @Persistent(table = "MANAGEDUSERS_TEAMS", defaultFetchGroup = "true")
     @Join(column = "MANAGEDUSER_ID")
     @Element(column = "TEAM_ID")
     @Order(extensions = @Extension(vendorName = "datanucleus", key = "list-ordering", value = "name ASC"))
     private List<Team> teams;
+
+    @Persistent(table = "MANAGEDUSERS_PERMISSIONS", defaultFetchGroup = "true")
+    @Join(column = "MANAGEDUSER_ID")
+    @Element(column = "PERMISSION_ID")
+    @Order(extensions = @Extension(vendorName = "datanucleus", key = "list-ordering", value = "name ASC"))
+    private List<Permission> permissions;
 
     public long getId() {
         return id;
@@ -103,6 +143,46 @@ public class ManagedUser implements Serializable, Principal, UserPrincipal {
         this.password = password;
     }
 
+    public String getNewPassword() {
+        return newPassword;
+    }
+
+    public void setNewPassword(String newPassword) {
+        this.newPassword = newPassword;
+    }
+
+    public String getConfirmPassword() {
+        return confirmPassword;
+    }
+
+    public void setConfirmPassword(String confirmPassword) {
+        this.confirmPassword = confirmPassword;
+    }
+
+    public Date getLastPasswordChange() {
+        return lastPasswordChange;
+    }
+
+    public void setLastPasswordChange(Date lastPasswordChange) {
+        this.lastPasswordChange = lastPasswordChange;
+    }
+
+    public String getFullname() {
+        return fullname;
+    }
+
+    public void setFullname(String fullname) {
+        this.fullname = fullname;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public boolean isSuspended() {
         return suspended;
     }
@@ -111,12 +191,36 @@ public class ManagedUser implements Serializable, Principal, UserPrincipal {
         this.suspended = suspended;
     }
 
+    public boolean isForcePasswordChange() {
+        return forcePasswordChange;
+    }
+
+    public void setForcePasswordChange(boolean forcePasswordChange) {
+        this.forcePasswordChange = forcePasswordChange;
+    }
+
+    public boolean isNonExpiryPassword() {
+        return nonExpiryPassword;
+    }
+
+    public void setNonExpiryPassword(boolean nonExpiryPassword) {
+        this.nonExpiryPassword = nonExpiryPassword;
+    }
+
     public List<Team> getTeams() {
         return teams;
     }
 
     public void setTeams(List<Team> teams) {
         this.teams = teams;
+    }
+
+    public List<Permission> getPermissions() {
+        return permissions;
+    }
+
+    public void setPermissions(List<Permission> permissions) {
+        this.permissions = permissions;
     }
 
     /**

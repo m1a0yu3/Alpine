@@ -18,10 +18,10 @@
 package alpine.auth;
 
 import alpine.Config;
+import alpine.logging.Logger;
 import alpine.model.LdapUser;
 import alpine.persistence.AlpineQueryManager;
 import org.apache.commons.lang3.StringUtils;
-import javax.naming.AuthenticationException;
 import javax.naming.CommunicationException;
 import javax.naming.Context;
 import javax.naming.NamingException;
@@ -38,11 +38,12 @@ import java.util.Hashtable;
  */
 public class LdapAuthenticationService implements AuthenticationService {
 
+    private static final Logger LOGGER = Logger.getLogger(LdapAuthenticationService.class);
     private static final String LDAP_URL = Config.getInstance().getProperty(Config.AlpineKey.LDAP_SERVER_URL);
     private static final String DOMAIN_NAME = Config.getInstance().getProperty(Config.AlpineKey.LDAP_DOMAIN);
-    private static final String BASE_DN = Config.getInstance().getProperty(Config.AlpineKey.LDAP_BASEDN);
-    private static final String LDAP_ATTRIBUTE_NAME = Config.getInstance().getProperty(Config.AlpineKey.LDAP_ATTRIBUTE_NAME);
-
+    private static final String LDAP_SECURITY_AUTH = Config.getInstance().getProperty(Config.AlpineKey.LDAP_SECURITY_AUTH);
+    private static final String LDAP_AUTH_USERNAME_FMT = Config.getInstance().getProperty(Config.AlpineKey.LDAP_AUTH_USERNAME_FMT);
+	
     private String username;
     private String password;
 
@@ -76,19 +77,22 @@ public class LdapAuthenticationService implements AuthenticationService {
      * returns an AuthenticationException.
      *
      * @return a Principal if authentication was successful
-     * @throws AuthenticationException when authentication is unsuccessful
+     * @throws AlpineAuthenticationException when authentication is unsuccessful
      * @since 1.0.0
      */
-    public Principal authenticate() throws AuthenticationException {
+    public Principal authenticate() throws AlpineAuthenticationException {
         if (validateCredentials()) {
             try (AlpineQueryManager qm = new AlpineQueryManager()) {
                 final LdapUser user = qm.getLdapUser(username);
                 if (user != null) {
                     return user;
+                } else {
+                    throw new AlpineAuthenticationException(AlpineAuthenticationException.CauseType.UNMAPPED_ACCOUNT);
                 }
             }
+        } else {
+            throw new AlpineAuthenticationException(AlpineAuthenticationException.CauseType.INVALID_CREDENTIALS);
         }
-        throw new AuthenticationException();
     }
 
     /**
@@ -106,8 +110,11 @@ public class LdapAuthenticationService implements AuthenticationService {
             throw new NamingException("Username or password cannot be empty or null");
         }
         final Hashtable<String, String> props = new Hashtable<>();
-        final String principalName = LDAP_ATTRIBUTE_NAME + "=" + formatPrincipal(username) + "," + BASE_DN;
-        props.put(Context.SECURITY_AUTHENTICATION, "simple");
+        final String principalName = formatPrincipal(username);
+        
+        if (StringUtils.isNotBlank(LDAP_SECURITY_AUTH)) {
+            props.put(Context.SECURITY_AUTHENTICATION, LDAP_SECURITY_AUTH);
+        }
         props.put(Context.SECURITY_PRINCIPAL, principalName);
         props.put(Context.SECURITY_CREDENTIALS, password);
         props.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
@@ -116,7 +123,8 @@ public class LdapAuthenticationService implements AuthenticationService {
         try {
             return new InitialLdapContext(props, null);
         } catch (CommunicationException e) {
-            throw new NamingException("Failed to connect to directory server");
+            LOGGER.error("Failed to connect to directory server", e);
+            throw(e);
         } catch (NamingException e) {
             throw new NamingException("Failed to authenticate user");
         }
@@ -146,14 +154,26 @@ public class LdapAuthenticationService implements AuthenticationService {
     }
 
     /**
-     * Formats the principal in username@domain format.
+     * Formats the principal in username@domain format or in a custom format if is specified in the config file.
+	 * If LDAP_AUTH_USERNAME_FMT is configured to a non-empty value, the substring %s in this value will be replaced with the entered username.
+	 * The recommended format of this value depends on your LDAP server(Active Directory, OpenLDAP, etc.).
+	 * Examples:
+	 *   alpine.ldap.auth.username.format=%s
+	 * 	 alpine.ldap.auth.username.format=%s@company.com
+	 *   alpine.ldap.auth.username.format=uid=%s,ou=People,dc=company,dc=com
+	 *   alpine.ldap.auth.username.format=userPrincipalName=%s,ou=People,dc=company,dc=com
      * @param username the username
      * @return a formatted user principal
+     * @since 1.2.0
      */
     private String formatPrincipal(String username) {
-        if (StringUtils.isNotBlank(DOMAIN_NAME)) {
-            return username + "@" + DOMAIN_NAME;
-        }
+		if  (StringUtils.isNotBlank(LDAP_AUTH_USERNAME_FMT)) {
+			return String.format(LDAP_AUTH_USERNAME_FMT, username);
+		} else {
+			if (StringUtils.isNotBlank(DOMAIN_NAME)) {
+				return username + "@" + DOMAIN_NAME;
+			}
+		}
         return username;
     }
 

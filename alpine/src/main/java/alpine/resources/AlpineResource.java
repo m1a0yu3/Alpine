@@ -21,6 +21,8 @@ import alpine.logging.Logger;
 import alpine.model.ApiKey;
 import alpine.model.LdapUser;
 import alpine.model.ManagedUser;
+import alpine.model.UserPrincipal;
+import alpine.persistence.AlpineQueryManager;
 import alpine.validation.RegexSequence;
 import alpine.validation.ValidationException;
 import alpine.validation.ValidationTask;
@@ -228,6 +230,9 @@ public abstract class AlpineResource {
     protected final List<ValidationException> contOnValidationError(final ValidationTask... validationTasks) {
         final List<ValidationException> errors = new ArrayList<>();
         for (ValidationTask validationTask:  validationTasks) {
+            if (!validationTask.isRequired() && validationTask.getInput() == null) {
+                continue;
+            }
             if (!validationTask.getPattern().matcher(validationTask.getInput()).matches()) {
                 errors.add(new ValidationException(validationTask.getInput(), validationTask.getErrorMessage()));
             }
@@ -355,12 +360,34 @@ public abstract class AlpineResource {
     }
 
     /**
+     * Convenience method that returns true if the principal has the specified permission,
+     * or false if not.
+     * @param permission the permission to check
+     * @return true if principal has permission assigned, false if not
+     * @since 1.2.0
+     */
+    protected boolean hasPermission(String permission) {
+        if (getPrincipal() == null) {
+            return false;
+        }
+        try (AlpineQueryManager qm = new AlpineQueryManager()) {
+            boolean hasPermission = false;
+            if (getPrincipal() instanceof ApiKey) {
+                hasPermission = qm.hasPermission((ApiKey)getPrincipal(), permission);
+            } else if (getPrincipal() instanceof UserPrincipal) {
+                hasPermission = qm.hasPermission((UserPrincipal)getPrincipal(), permission, true);
+            }
+            return hasPermission;
+        }
+    }
+
+    /**
      * Logs a security event to the security audit log. Expects one of:
      * {@link SecurityMarkers#SECURITY_AUDIT}
      * {@link SecurityMarkers#SECURITY_SUCCESS}
      * {@link SecurityMarkers#SECURITY_FAILURE}
      * @param logger the logger to use
-     * @oaram marker the marker to add to the event
+     * @param marker the marker to add to the event
      * @param message the initial content of the event
      * @since 1.0.0
      */

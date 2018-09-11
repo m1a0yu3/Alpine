@@ -20,6 +20,9 @@ package alpine.event.framework;
 import alpine.logging.Logger;
 import alpine.model.EventServiceLog;
 import alpine.persistence.AlpineQueryManager;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,11 +39,15 @@ import java.util.concurrent.Executors;
  * @author Steve Springett
  * @since 1.0.0
  */
-public abstract class BaseEventService {
+public abstract class BaseEventService implements IEventService {
 
     private Logger logger = Logger.getLogger(BaseEventService.class);
     private Map<Class<? extends Event>, ArrayList<Class<? extends Subscriber>>> subscriptionMap = new ConcurrentHashMap<>();
-    private ExecutorService executor = Executors.newFixedThreadPool(1);
+    private ExecutorService executor = Executors.newFixedThreadPool(1, new BasicThreadFactory.Builder()
+            .namingPattern("Alpine-BaseEventService-%d")
+            .uncaughtExceptionHandler(new LoggableUncaughtExceptionHandler())
+            .build()
+    );
     private final ExecutorService dynamicExecutor = Executors.newWorkStealingPool();
 
     /**
@@ -60,10 +67,7 @@ public abstract class BaseEventService {
     }
 
     /**
-     * Publishes events. Published events will get dispatched to all subscribers in the order in which they
-     * subscribed. Subscribers are informed asynchronously one after the next.
-     * @param event An Event to publish
-     *
+     * {@inheritDoc}
      * @since 1.0.0
      */
     public void publish(Event event) {
@@ -79,25 +83,51 @@ public abstract class BaseEventService {
             // Check to see if the Event is Unblocked. If so, use a separate executor pool from normal events
             final ExecutorService executorService = event instanceof UnblockedEvent  ? dynamicExecutor : executor;
 
-            executorService.submit(() -> {
+            executorService.execute(() -> {
                 try (AlpineQueryManager qm = new AlpineQueryManager()) {
                     final EventServiceLog eventServiceLog = qm.createEventServiceLog(clazz);
-                    final Subscriber subscriber = clazz.newInstance();
+                    final Subscriber subscriber = clazz.getDeclaredConstructor().newInstance();
                     subscriber.inform(event);
                     qm.updateEventServiceLog(eventServiceLog);
-                } catch (InstantiationException | IllegalAccessException e) {
-                    logger.error("An error occurred while informing subscriber: " + e.getMessage());
+                    if (event instanceof ChainableEvent) {
+                        ChainableEvent chainableEvent = (ChainableEvent)event;
+                        logger.debug("Calling onSuccess");
+                        for (ChainLink chainLink: chainableEvent.onSuccess()) {
+                            if (chainLink.getSuccessEventService() != null) {
+                                Method method = chainLink.getSuccessEventService().getMethod("getInstance");
+                                IEventService es = (IEventService) method.invoke(chainLink.getSuccessEventService(), new Object[0]);
+                                es.publish(chainLink.getSuccessEvent());
+                            } else {
+                                Event.dispatch(chainLink.getSuccessEvent());
+                            }
+                        }
+                    }
+                } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException | SecurityException e) {
+                    logger.error("An error occurred while informing subscriber: " + e);
+                    if (event instanceof ChainableEvent) {
+                        ChainableEvent chainableEvent = (ChainableEvent)event;
+                        logger.debug("Calling onFailure");
+                        for (ChainLink chainLink: chainableEvent.onFailure()) {
+                            if (chainLink.getFailureEventService() != null) {
+                                try {
+                                    Method method = chainLink.getFailureEventService().getMethod("getInstance");
+                                    IEventService es = (IEventService) method.invoke(chainLink.getFailureEventService(), new Object[0]);
+                                    es.publish(chainLink.getFailureEvent());
+                                } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException ex) {
+                                    logger.error("Exception while calling onFailure callback", ex);
+                                }
+                            } else {
+                                Event.dispatch(chainLink.getFailureEvent());
+                            }
+                        }
+                    }
                 }
             });
         }
     }
 
     /**
-     * Subscribes to an event. Subscribes are automatically notified of all events for which they are
-     * subscribed.
-     * @param eventType The type of event to subscribe to
-     * @param subscriberType The Subscriber that gets informed when the type of event is published
-     *
+     * {@inheritDoc}
      * @since 1.0.0
      */
     public void subscribe(Class<? extends Event> eventType, Class<? extends Subscriber> subscriberType) {
@@ -111,11 +141,7 @@ public abstract class BaseEventService {
     }
 
     /**
-     * Unsubscribes a subscriber. All event types the subscriber has subscribed to will be
-     * unsubscribed. Once unsubscribed, the subscriber will no longer be informed of published
-     * events.
-     * @param subscriberType The Subscriber to unsubscribe.
-     *
+     * {@inheritDoc}
      * @since 1.0.0
      */
     public void unsubscribe(Class<? extends Subscriber> subscriberType) {
@@ -125,9 +151,16 @@ public abstract class BaseEventService {
     }
 
     /**
-     * Shuts down the executioner. Once shut down, future work will not be performed. This should
-     * only be called prior to the application being shut down.
-     *
+     * {@inheritDoc}
+     * @since 1.2.0
+     */
+    public boolean hasSubscriptions(Event event) {
+        final ArrayList<Class<? extends Subscriber>> subscriberClasses = subscriptionMap.get(event.getClass());
+        return subscriberClasses != null;
+    }
+
+    /**
+     * {@inheritDoc}
      * @since 1.0.0
      */
     public void shutdown() {

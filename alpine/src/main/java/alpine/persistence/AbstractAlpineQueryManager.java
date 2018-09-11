@@ -27,9 +27,12 @@ import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
 import java.lang.reflect.Field;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -433,6 +436,41 @@ public abstract class AbstractAlpineQueryManager implements AutoCloseable {
     }
 
     /**
+     * Refreshes and detaches an object by its ID.
+     * @param <T> A type parameter. This type will be returned
+     * @param clazz the persistence class to retrive the ID for
+     * @param id the object id to retrieve
+     * @return an object of the specified type
+     * @since 1.3.0
+     */
+    public <T> T detach(Class<T> clazz, Object id) {
+        pm.getFetchPlan().setDetachmentOptions(FetchPlan.DETACH_LOAD_FIELDS);
+        return pm.detachCopy(pm.getObjectById(clazz, id));
+    }
+
+    /**
+     * Refreshes and detaches an objects.
+     * @param pcs the instances to detach
+     * @return the detached instances
+     * @since 1.3.0
+     */
+    public <T> List<T> detach(List<T> pcs) {
+        pm.getFetchPlan().setDetachmentOptions(FetchPlan.DETACH_LOAD_FIELDS);
+        return new ArrayList<>(pm.detachCopyAll(pcs));
+    }
+
+    /**
+     * Refreshes and detaches an objects.
+     * @param pcs the instances to detach
+     * @return the detached instances
+     * @since 1.3.0
+     */
+    public <T> Set<T> detach(Set<T> pcs) {
+        pm.getFetchPlan().setDetachmentOptions(FetchPlan.DETACH_LOAD_FIELDS);
+        return new LinkedHashSet<>(pm.detachCopyAll(pcs));
+    }
+
+    /**
      * Retrieves an object by its ID.
      * @param <T> A type parameter. This type will be returned
      * @param clazz the persistence class to retrive the ID for
@@ -509,15 +547,8 @@ public abstract class AbstractAlpineQueryManager implements AutoCloseable {
         pm.close();
     }
 
-    /**
-     * Upon finalization, closes the PersistenceManager, if not already closed.
-     * @throws Throwable the {@code Exception} raised by this method
-     * @since 1.0.0
-     */
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
+    public PersistenceManager getPersistenceManager() {
+        return pm;
     }
 
 }
-

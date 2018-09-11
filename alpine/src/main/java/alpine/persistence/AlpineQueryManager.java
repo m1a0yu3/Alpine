@@ -23,9 +23,11 @@ import alpine.event.framework.EventService;
 import alpine.event.framework.LoggableSubscriber;
 import alpine.event.framework.Subscriber;
 import alpine.model.ApiKey;
+import alpine.model.ConfigProperty;
 import alpine.model.EventServiceLog;
 import alpine.model.LdapUser;
 import alpine.model.ManagedUser;
+import alpine.model.Permission;
 import alpine.model.Team;
 import alpine.model.UserPrincipal;
 import alpine.resources.AlpineRequest;
@@ -33,10 +35,11 @@ import javax.jdo.Query;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * This QueryManager provides a concrete entension of {@link AbstractAlpineQueryManager} by
+ * This QueryManager provides a concrete extension of {@link AbstractAlpineQueryManager} by
  * providing methods that operate on the default Alpine models such as ManagedUser and Team.
  *
  * @author Steve Springett
@@ -47,7 +50,9 @@ public class AlpineQueryManager extends AbstractAlpineQueryManager {
     /**
      * Default constructor.
      */
-    public AlpineQueryManager() { }
+    public AlpineQueryManager() {
+        super();
+    }
 
     /**
      * Constructs a new AlpineQueryManager.
@@ -169,14 +174,62 @@ public class AlpineQueryManager extends AbstractAlpineQueryManager {
      * @since 1.0.0
      */
     public ManagedUser createManagedUser(final String username, final String passwordHash) {
+        return createManagedUser(username, null, null, passwordHash, false, false, false);
+    }
+
+    /**
+     * Creates a new ManagedUser object.
+     * @param username The username for the user
+     * @param fullname The fullname of the user
+     * @param email The users email address
+     * @param passwordHash The hashed password
+     * @param forcePasswordChange Whether or not user needs to change password on next login or not
+     * @param nonExpiryPassword Whether or not the users password ever expires or not
+     * @param suspended Whether or not user being created is suspended or not
+     * @return a ManagedUser
+     * @see alpine.auth.PasswordService
+     * @since 1.1.0
+     */
+    public ManagedUser createManagedUser(final String username, final String fullname, final String email,
+                                         final String passwordHash, final boolean forcePasswordChange,
+                                         final boolean nonExpiryPassword, final boolean suspended) {
         pm.currentTransaction().begin();
         final ManagedUser user = new ManagedUser();
         user.setUsername(username);
+        user.setFullname(fullname);
+        user.setEmail(email);
         user.setPassword(passwordHash);
-        user.setSuspended(false);
+        user.setForcePasswordChange(forcePasswordChange);
+        user.setNonExpiryPassword(nonExpiryPassword);
+        user.setSuspended(suspended);
+        user.setLastPasswordChange(new Date());
         pm.makePersistent(user);
         pm.currentTransaction().commit();
         return getObjectById(ManagedUser.class, user.getId());
+    }
+
+    /**
+     * Updates the specified ManagedUser.
+     * @param transientUser the optionally detached ManagedUser object to update.
+     * @return an ManagedUser
+     * @since 1.0.0
+     */
+    public ManagedUser updateManagedUser(final ManagedUser transientUser) {
+        final ManagedUser user = getObjectById(ManagedUser.class, transientUser.getId());
+        pm.currentTransaction().begin();
+        user.setFullname(transientUser.getFullname());
+        user.setEmail(transientUser.getEmail());
+        user.setForcePasswordChange(transientUser.isForcePasswordChange());
+        user.setNonExpiryPassword(transientUser.isNonExpiryPassword());
+        user.setSuspended(transientUser.isSuspended());
+        if (transientUser.getPassword() != null) {
+            if (!user.getPassword().equals(transientUser.getPassword())) {
+                user.setLastPasswordChange(new Date());
+            }
+            user.setPassword(transientUser.getPassword());
+        }
+        pm.currentTransaction().commit();
+        return pm.getObjectById(ManagedUser.class, user.getId());
     }
 
     /**
@@ -331,6 +384,148 @@ public class AlpineQueryManager extends AbstractAlpineQueryManager {
     }
 
     /**
+     * Creates a Permission object.
+     * @param name The name of the permission
+     * @param description the permissions description
+     * @return a Permission
+     * @since 1.1.0
+     */
+    public Permission createPermission(final String name, final String description) {
+        pm.currentTransaction().begin();
+        final Permission permission = new Permission();
+        permission.setName(name);
+        permission.setDescription(description);
+        pm.makePersistent(permission);
+        pm.currentTransaction().commit();
+        return getObjectById(Permission.class, permission.getId());
+    }
+
+    /**
+     * Retrieves a Permission by its name.
+     * @param name The name of the permission
+     * @return a Permission
+     * @since 1.1.0
+     */
+    @SuppressWarnings("unchecked")
+    public Permission getPermission(final String name) {
+        final Query query = pm.newQuery(Permission.class, "name == :name");
+        final List<Permission> result = (List<Permission>) query.execute(name);
+        return result.size() == 0 ? null : result.get(0);
+    }
+
+    /**
+     * Returns a list of all Permissions defined in the system.
+     * @return a List of Permission objects
+     * @since 1.1.0
+     */
+    @SuppressWarnings("unchecked")
+    public List<Permission> getPermissions() {
+        final Query query = pm.newQuery(Permission.class);
+        query.setOrdering("name asc");
+        return (List<Permission>) query.execute();
+    }
+
+    /**
+     * Determines the effective permissions for the specified user by collecting
+     * a List of all permissions assigned to the user either directly, or through
+     * team membership.
+     * @param user the user to retrieve permissions for
+     * @return a List of Permission objects
+     * @since 1.1.0
+     */
+    public List<Permission> getEffectivePermissions(UserPrincipal user) {
+        LinkedHashSet<Permission> permissions = new LinkedHashSet<>();
+        if (user.getPermissions() != null) {
+            permissions.addAll(user.getPermissions());
+        }
+        if (user.getTeams() != null) {
+            for (Team team: user.getTeams()) {
+                List<Permission> teamPermissions = getObjectById(Team.class, team.getId()).getPermissions();
+                if (teamPermissions != null) {
+                    permissions.addAll(teamPermissions);
+                }
+            }
+        }
+        return new ArrayList<>(permissions);
+    }
+
+    /**
+     * Determines if the specified UserPrincipal has been assigned the specified permission.
+     * @param user the UserPrincipal to query
+     * @param permissionName the name of the permission
+     * @return true if the user has the permission assigned, false if not
+     * @since 1.0.0
+     */
+    public boolean hasPermission(final UserPrincipal user, String permissionName) {
+        return hasPermission(user, permissionName, false);
+    }
+
+    /**
+     * Determines if the specified UserPrincipal has been assigned the specified permission.
+     * @param user the UserPrincipal to query
+     * @param permissionName the name of the permission
+     * @param includeTeams if true, will query all Team membership assigned to the user for the specified permission
+     * @return true if the user has the permission assigned, false if not
+     * @since 1.0.0
+     */
+    public boolean hasPermission(final UserPrincipal user, String permissionName, boolean includeTeams) {
+        final Query query;
+        if (user instanceof ManagedUser) {
+            query = pm.newQuery(Permission.class, "name == :permissionName && managedUsers.contains(:user)");
+        } else {
+            query = pm.newQuery(Permission.class, "name == :permissionName && ldapUsers.contains(:user)");
+        }
+        query.setResult("count(id)");
+        long count = (Long) query.execute(permissionName, user);
+        if (count > 0) {
+            return true;
+        }
+        if (includeTeams) {
+            for (Team team: user.getTeams()) {
+                if (hasPermission(team, permissionName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Determines if the specified Team has been assigned the specified permission.
+     * @param team the Team to query
+     * @param permissionName the name of the permission
+     * @return true if the team has the permission assigned, false if not
+     * @since 1.0.0
+     */
+    public boolean hasPermission(final Team team, String permissionName) {
+        final Query query = pm.newQuery(Permission.class, "name == :permissionName && teams.contains(:team)");
+        query.setResult("count(id)");
+        return (Long) query.execute(permissionName, team) > 0;
+    }
+
+    /**
+     * Determines if the specified ApiKey has been assigned the specified permission.
+     * @param apiKey the ApiKey to query
+     * @param permissionName the name of the permission
+     * @return true if the apiKey has the permission assigned, false if not
+     * @since 1.1.1
+     */
+    public boolean hasPermission(final ApiKey apiKey, String permissionName) {
+        if (apiKey.getTeams() == null) {
+            return false;
+        }
+        for (Team team: apiKey.getTeams()) {
+            List<Permission> teamPermissions = getObjectById(Team.class, team.getId()).getPermissions();
+            for (Permission permission: teamPermissions) {
+                if (permission.getName().equals(permissionName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Creates a new EventServiceLog. This method will automatically determine
      * if the subscriber is an implementation of {@link LoggableSubscriber} and
      * if so, will log the event. If not, then nothing will be logged and this
@@ -382,6 +577,70 @@ public class AlpineQueryManager extends AbstractAlpineQueryManager {
         query.setOrdering("completed desc");
         final List<EventServiceLog> result = (List<EventServiceLog>) query.execute(clazz);
         return result.size() == 0 ? null : result.get(0);
+    }
+
+    /**
+     * Returns a ConfigProperty with the specified groupName and propertyName.
+     * @param groupName the group name of the config property
+     * @param propertyName the name of the property
+     * @return a ConfigProperty object
+     * @since 1.3.0
+     */
+    @SuppressWarnings("unchecked")
+    public ConfigProperty getConfigProperty(final String groupName, final String propertyName) {
+        final Query query = pm.newQuery(ConfigProperty.class, "groupName == :groupName && propertyName == :propertyName");
+        final List<ConfigProperty> result = (List<ConfigProperty>) query.execute(groupName, propertyName);
+        return result.size() == 0 ? null : result.get(0);
+    }
+
+    /**
+     * Returns a list of ConfigProperty objects with the specified groupName.
+     * @param groupName the group name of the properties
+     * @return a List of ConfigProperty objects
+     * @since 1.3.0
+     */
+    @SuppressWarnings("unchecked")
+    public List<ConfigProperty> getConfigProperties(final String groupName) {
+        final Query query = pm.newQuery(ConfigProperty.class, "groupName == :groupName");
+        query.setOrdering("propertyName asc");
+        return (List<ConfigProperty>) query.execute(groupName);
+    }
+
+    /**
+     * Returns a list of ConfigProperty objects.
+     * @return a List of ConfigProperty objects
+     * @since 1.3.0
+     */
+    @SuppressWarnings("unchecked")
+    public List<ConfigProperty> getConfigProperties() {
+        final Query query = pm.newQuery(ConfigProperty.class);
+        query.setOrdering("groupName asc, propertyName asc");
+        return (List<ConfigProperty>) query.execute();
+    }
+
+    /**
+     * Creates a ConfigProperty object.
+     * @param groupName the group name of the property
+     * @param propertyName the name of the property
+     * @param propertyValue the value of the property
+     * @param propertyType the type of property
+     * @param description a description of the property
+     * @return a ConfigProperty object
+     * @since 1.3.0
+     */
+    public ConfigProperty createConfigProperty(final String groupName, final String propertyName,
+                                               final String propertyValue, final ConfigProperty.PropertyType propertyType,
+                                               final String description) {
+        pm.currentTransaction().begin();
+        final ConfigProperty configProperty = new ConfigProperty();
+        configProperty.setGroupName(groupName);
+        configProperty.setPropertyName(propertyName);
+        configProperty.setPropertyValue(propertyValue);
+        configProperty.setPropertyType(propertyType);
+        configProperty.setDescription(description);
+        pm.makePersistent(configProperty);
+        pm.currentTransaction().commit();
+        return getObjectById(ConfigProperty.class, configProperty.getId());
     }
 
 }

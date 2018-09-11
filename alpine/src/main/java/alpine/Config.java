@@ -18,13 +18,19 @@
 package alpine;
 
 import alpine.logging.Logger;
-import alpine.util.SystemUtil;
+import alpine.util.PathUtil;
 import org.apache.commons.lang3.StringUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Properties;
 
 /**
@@ -40,10 +46,25 @@ public class Config {
     private static final String PROP_FILE = "application.properties";
     private static final String ALPINE_VERSION_PROP_FILE = "alpine.version";
     private static final String APPLICATION_VERSION_PROP_FILE = "application.version";
-    private static Config instance;
+    private static final Config INSTANCE;
     private static Properties properties;
     private static Properties alpineVersionProperties;
     private static Properties applicationVersionProperties;
+
+    static {
+        LOGGER.info(StringUtils.repeat("-", 80));
+        INSTANCE = new Config();
+        INSTANCE.init();
+        LOGGER.info(StringUtils.repeat("-", 80));
+        LOGGER.info("Application: " + INSTANCE.getApplicationName());
+        LOGGER.info("Version:     " + INSTANCE.getApplicationVersion());
+        LOGGER.info("Built-on:    " + INSTANCE.getApplicationBuildTimestamp());
+        LOGGER.info(StringUtils.repeat("-", 80));
+        LOGGER.info("Framework:   " + INSTANCE.getFrameworkName());
+        LOGGER.info("Version :    " + INSTANCE.getFrameworkVersion());
+        LOGGER.info("Built-on:    " + INSTANCE.getFrameworkBuildTimestamp());
+        LOGGER.info(StringUtils.repeat("-", 80));
+    }
 
     public interface Key {
 
@@ -66,6 +87,11 @@ public class Config {
         DATA_DIRECTORY           ("alpine.data.directory",            "~/.alpine"),
         DATABASE_MODE            ("alpine.database.mode",             "embedded"),
         DATABASE_PORT            ("alpine.database.port",             9092),
+        DATABASE_URL             ("alpine.database.url",              "jdbc:h2:mem:alpine"),
+        DATABASE_DRIVER          ("alpine.database.driver",           "org.h2.Driver"),
+        DATABASE_DRIVER_PATH     ("alpine.database.driver.path",      null),
+        DATABASE_USERNAME        ("alpine.database.username",         "sa"),
+        DATABASE_PASSWORD        ("alpine.database.password",         ""),
         ENFORCE_AUTHENTICATION   ("alpine.enforce.authentication",    true),
         ENFORCE_AUTHORIZATION    ("alpine.enforce.authorization",     true),
         BCRYPT_ROUNDS            ("alpine.bcrypt.rounds",             14),
@@ -73,8 +99,10 @@ public class Config {
         LDAP_SERVER_URL          ("alpine.ldap.server.url",           null),
         LDAP_DOMAIN              ("alpine.ldap.domain",               null),
         LDAP_BASEDN              ("alpine.ldap.basedn",               null),
+        LDAP_SECURITY_AUTH       ("alpine.ldap.security.auth",        null),
         LDAP_BIND_USERNAME       ("alpine.ldap.bind.username",        null),
         LDAP_BIND_PASSWORD       ("alpine.ldap.bind.password",        null),
+        LDAP_AUTH_USERNAME_FMT   ("alpine.ldap.auth.username.format", null),
         LDAP_ATTRIBUTE_NAME      ("alpine.ldap.attribute.name",       "userPrincipalName"),
         LDAP_ATTRIBUTE_MAIL      ("alpine.ldap.attribute.mail",       "mail"),
         HTTP_PROXY_ADDRESS       ("alpine.http.proxy.address",        null),
@@ -105,21 +133,7 @@ public class Config {
      * @since 1.0.0
      */
     public static Config getInstance() {
-        if (instance == null) {
-            LOGGER.info(StringUtils.repeat("-", 80));
-            instance = new Config();
-            instance.init();
-            LOGGER.info(StringUtils.repeat("-", 80));
-            LOGGER.info("Application: " + instance.getApplicationName());
-            LOGGER.info("Version:     " + instance.getApplicationVersion());
-            LOGGER.info("Built-on:    " + instance.getApplicationBuildTimestamp());
-            LOGGER.info(StringUtils.repeat("-", 80));
-            LOGGER.info("Framework:   " + instance.getFrameworkName());
-            LOGGER.info("Version :    " + instance.getFrameworkVersion());
-            LOGGER.info("Built-on:    " + instance.getFrameworkBuildTimestamp());
-            LOGGER.info(StringUtils.repeat("-", 80));
-        }
-        return instance;
+        return INSTANCE;
     }
 
     /**
@@ -133,11 +147,11 @@ public class Config {
         LOGGER.info("Initializing Configuration");
         properties = new Properties();
 
-        final String alpineAppProp = System.getProperty(ALPINE_APP_PROP);
+        final String alpineAppProp = PathUtil.resolve(System.getProperty(ALPINE_APP_PROP));
         if (StringUtils.isNotBlank(alpineAppProp)) {
             LOGGER.info("Loading application properties from " + alpineAppProp);
-            try {
-                properties.load(new FileInputStream(new File(alpineAppProp)));
+            try (FileInputStream fileInputStream = new FileInputStream(new File(alpineAppProp))) {
+                properties.load(fileInputStream);
             } catch (FileNotFoundException e) {
                 LOGGER.error("Could not find property file " + alpineAppProp);
             } catch (IOException e) {
@@ -205,6 +219,15 @@ public class Config {
     }
 
     /**
+     * Returns the Alpine UUID.
+     * @return the UUID unique to this build of Alpine
+     * @since 1.3.0
+     */
+    public String getFrameworkBuildUuid() {
+        return alpineVersionProperties.getProperty("uuid");
+    }
+
+    /**
      * Returns the Application component name.
      * @return the Application name
      * @since 1.0.0
@@ -232,6 +255,15 @@ public class Config {
     }
 
     /**
+     * Returns the Application UUID.
+     * @return the UUID unique to this build of the application
+     * @since 1.3.0
+     */
+    public String getApplicationBuildUuid() {
+        return applicationVersionProperties.getProperty("uuid");
+    }
+
+    /**
      * Returns the fully qualified path to the configured data directory.
      * Expects a fully qualified path or a path starting with ~/
      *
@@ -240,10 +272,7 @@ public class Config {
      * @since 1.0.0
      */
     public File getDataDirectorty() {
-        String prop = getProperty(AlpineKey.DATA_DIRECTORY);
-        if (prop.startsWith("~" + File.separator)) {
-            prop = SystemUtil.getUserHome() + prop.substring(1);
-        }
+        final String prop = PathUtil.resolve(getProperty(AlpineKey.DATA_DIRECTORY));
         return new File(prop).getAbsoluteFile();
     }
 
@@ -320,6 +349,41 @@ public class Config {
      */
     public String getProperty(String key, String defaultValue) {
         return properties.getProperty(key, defaultValue);
+    }
+
+    /**
+     * Extends the runtime classpath to include the files or directories specified.
+     * @param paths one or more strings representing a single JAR file or a directory containing JARs.
+     * @since 1.0.0
+     */
+    public void expandClasspath(String... paths) {
+        if (paths == null || paths.length == 0) {
+            return;
+        }
+        for (String path: paths) {
+            expandClasspath(new File(PathUtil.resolve(path)));
+        }
+    }
+
+    /**
+     * Extends the runtime classpath to include the files or directories specified.
+     * @param files one or more File objects representing a single JAR file or a directory containing JARs.
+     * @since 1.0.0
+     */
+    public void expandClasspath(File... files) {
+        URLClassLoader urlClassLoader = (URLClassLoader)ClassLoader.getSystemClassLoader();
+        Class<URLClassLoader> urlClass = URLClassLoader.class;
+        for (File file: files) {
+            LOGGER.info("Expanding classpath to include: " + file.getAbsolutePath());
+            URI fileUri = file.toURI();
+            try {
+                Method method = urlClass.getDeclaredMethod("addURL", URL.class);
+                method.setAccessible(true);
+                method.invoke(urlClassLoader, fileUri.toURL());
+            } catch (MalformedURLException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                LOGGER.error("Error expanding classpath", e);
+            }
+        }
     }
 
     /**

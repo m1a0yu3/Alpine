@@ -16,15 +16,13 @@
 
   Copyright (c) Steve Springett. All Rights Reserved.
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>us.springett</groupId>
     <artifactId>alpine-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.3.1-SNAPSHOT</version>
 
     <modules>
         <module>alpine</module>
@@ -35,7 +33,16 @@
         An opinionated scaffolding library that jumpstarts Java projects with an API-first design,
         secure defaults, and minimal dependencies.
     </description>
+    <url>https://github.com/stevespringett/Alpine</url>
     <inceptionYear>2016</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <developers>
         <developer>
@@ -47,6 +54,34 @@
             </roles>
         </developer>
     </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:stevespringett/Alpine.git</connection>
+        <url>https://github.com/stevespringett/Alpine.git</url>
+        <developerConnection>scm:git:git@github.com:stevespringett/Alpine.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/stevespringett/Alpine/issues</url>
+    </issueManagement>
+
+    <ciManagement>
+        <system>travis-ci</system>
+        <url>https://travis-ci.org/stevespringett/Alpine</url>
+    </ciManagement>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
         <!-- Maven Build Properties -->
@@ -60,62 +95,102 @@
         <!-- Maven Plugin Versions -->
         <maven.compiler.plugin.version>3.7.0</maven.compiler.plugin.version>
         <maven.dependency.plugin.version>3.0.2</maven.dependency.plugin.version>
-        <maven.javadoc.plugin.version>2.10.4</maven.javadoc.plugin.version>
+        <maven.javadoc.plugin.version>3.0.1</maven.javadoc.plugin.version>
         <maven.site.plugin.version>3.6</maven.site.plugin.version>
         <maven.source.plugin.version>3.0.1</maven.source.plugin.version>
         <maven.surefire.plugin.version>2.20.1</maven.surefire.plugin.version>
         <maven.war.plugin.version>3.2.0</maven.war.plugin.version>
         <maven.datanucleus.plugin.version>5.0.2</maven.datanucleus.plugin.version>
-        <maven.spdx.plugin.version>0.4.0</maven.spdx.plugin.version>
         <maven.versions.plugin.version>2.5</maven.versions.plugin.version>
+        <maven.gpg.plugin.version>1.5</maven.gpg.plugin.version>
+        <maven.enforcer.plugin.version>1.4.1</maven.enforcer.plugin.version>
+        <maven.uuidgenerator.plugin.version>1.0.1</maven.uuidgenerator.plugin.version>
 
-        <!-- Software Security: HPE Fortify SCA -->
-        <maven.fortify.plugin.version>17.20</maven.fortify.plugin.version>
+        <!-- Software Security: Fortify SCA -->
+        <maven.fortify.plugin.version>18.10</maven.fortify.plugin.version>
         <plugin.fortify.sca.debug>false</plugin.fortify.sca.debug>
         <plugin.fortify.sca.verbose>false</plugin.fortify.sca.verbose>
         <plugin.fortify.sca.sourcePath>${project.build.directory}/dependency-sources</plugin.fortify.sca.sourcePath>
         <plugin.fortify.sca.buildId>${project.artifactId}</plugin.fortify.sca.buildId>
         <plugin.fortify.sca.source.version>${maven.compiler.source}</plugin.fortify.sca.source.version>
+        <plugin.fortify.sca.findbugs>false</plugin.fortify.sca.findbugs>
 
         <!-- Software Security: OWASP Dependency-Check -->
-        <maven.dependency-check.plugin.version>3.0.2</maven.dependency-check.plugin.version>
+        <maven.dependency-check.plugin.version>3.2.1</maven.dependency-check.plugin.version>
         <plugin.dependency-check.autoUpdate>true</plugin.dependency-check.autoUpdate>
         <plugin.dependency-check.format>ALL</plugin.dependency-check.format>
         <plugin.dependency-check.skipTestScope>true</plugin.dependency-check.skipTestScope>
         <plugin.dependency-check.suppressionFile>${env.DEPENDENCY-CHECK_SUPPRESSION}</plugin.dependency-check.suppressionFile>
-        <plugin.dependency-check.centralAnalyzerEnabled>true</plugin.dependency-check.centralAnalyzerEnabled>
-        <plugin.dependency-check.externalReport>true</plugin.dependency-check.externalReport>
+        <plugin.dependency-check.analyzer.archiveAnalyzerEnabled>false</plugin.dependency-check.analyzer.archiveAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.assemblyAnalyzerEnabled>false</plugin.dependency-check.analyzer.assemblyAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.autoconfAnalyzerEnabled>false</plugin.dependency-check.analyzer.autoconfAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.bundleAuditAnalyzerEnabled>false</plugin.dependency-check.analyzer.bundleAuditAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.bundleAuditPath />
+        <plugin.dependency-check.analyzer.centralAnalyzerEnabled>true</plugin.dependency-check.analyzer.centralAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.cmakeAnalyzerEnabled>false</plugin.dependency-check.analyzer.cmakeAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.cocoapodsAnalyzerEnabled>false</plugin.dependency-check.analyzer.cocoapodsAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.composerAnalyzerEnabled>false</plugin.dependency-check.analyzer.composerAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.jarAnalyzer>true</plugin.dependency-check.analyzer.jarAnalyzer>
+        <plugin.dependency-check.analyzer.nexusAnalyzerEnabled>false</plugin.dependency-check.analyzer.nexusAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.nexusUrl />
+        <plugin.dependency-check.analyzer.nexusUsesProxy />
+        <plugin.dependency-check.analyzer.nodeAnalyzerEnabled>true</plugin.dependency-check.analyzer.nodeAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.nspAnalyzerEnabled>true</plugin.dependency-check.analyzer.nspAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.nuspecAnalyzerEnabled>false</plugin.dependency-check.analyzer.nuspecAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.opensslAnalyzerEnabled>false</plugin.dependency-check.analyzer.opensslAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.pyDistributionAnalyzerEnabled>false</plugin.dependency-check.analyzer.pyDistributionAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.pyPackageAnalyzerEnabled>false</plugin.dependency-check.analyzer.pyPackageAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.rubygemsAnalyzerEnabled>false</plugin.dependency-check.analyzer.rubygemsAnalyzerEnabled>
+        <plugin.dependency-check.analyzer.swiftPackageManagerAnalyzerEnabled>false</plugin.dependency-check.analyzer.swiftPackageManagerAnalyzerEnabled>
 
         <!-- Software Security: Retire.js -->
-        <maven.retirejs.plugin.version>2.1.0</maven.retirejs.plugin.version>
+        <maven.retirejs.plugin.version>3.0.1</maven.retirejs.plugin.version>
         <plugin.retirejs.breakOnFailure>true</plugin.retirejs.breakOnFailure>
         <plugin.retirejs.webAppDir>${project.build.sourceDirectory}/../webapp</plugin.retirejs.webAppDir>
         <plugin.retirejs.detail>true</plugin.retirejs.detail>
         <plugin.retirejs.indentSize>4</plugin.retirejs.indentSize>
 
+        <!-- Software Analysis: CycloneDX -->
+        <maven.cyclonedx.plugin.version>1.1.2</maven.cyclonedx.plugin.version>
+        <plugin.cyclonedx.includeCompileScope>true</plugin.cyclonedx.includeCompileScope>
+        <plugin.cyclonedx.includeProvidedScope>true</plugin.cyclonedx.includeProvidedScope>
+        <plugin.cyclonedx.includeRuntimeScope>true</plugin.cyclonedx.includeRuntimeScope>
+        <plugin.cyclonedx.includeSystemScope>true</plugin.cyclonedx.includeSystemScope>
+        <plugin.cyclonedx.includeTestScope>false</plugin.cyclonedx.includeTestScope>
+
         <!-- Dependency Versions -->
+        <lib.alpine.executable.war.version>1.1.0</lib.alpine.executable.war.version>
         <lib.bcrypt.version>0.4</lib.bcrypt.version>
-        <lib.commons.collections4.version>4.1</lib.commons.collections4.version>
-        <lib.commons.dbcp2.version>2.1.1</lib.commons.dbcp2.version>
+        <lib.commons.collections4.version>4.2</lib.commons.collections4.version>
         <lib.commons.io.version>2.6</lib.commons.io.version>
-        <lib.commons.lang3.version>3.7</lib.commons.lang3.version>
-        <lib.datanucleus-api-jdo.version>5.1.4</lib.datanucleus-api-jdo.version>
-        <lib.datanucleus.version>5.1.4</lib.datanucleus.version>
-        <lib.h2.version>1.4.196</lib.h2.version>
-        <lib.jackson.version>2.9.3</lib.jackson.version>
-        <lib.jdo.api.version>3.2.0-m7</lib.jdo.api.version>
-        <lib.jersey.version>2.26</lib.jersey.version>
+        <lib.commons.lang3.version>3.8</lib.commons.lang3.version>
+        <lib.datanucleus-api-jdo.version>5.1.6</lib.datanucleus-api-jdo.version>
+        <!-- Auto-generated classes have warnings which break build
+             https://github.com/datanucleus/datanucleus-jdo-query/pull/10
+        <lib.datanucleus-jdo-query.version>5.0.6</lib.datanucleus-jdo-query.version>
+        -->
+        <lib.datanucleus.version>5.1.9</lib.datanucleus.version>
+        <lib.h2.version>1.4.197</lib.h2.version>
+        <lib.hikaricp.version>3.2.0</lib.hikaricp.version>
+        <lib.javassist.version>3.22.0-GA</lib.javassist.version>
+        <lib.jackson.version>2.9.6</lib.jackson.version>
+        <lib.javamail.version>1.6.2</lib.javamail.version>
+        <lib.jdo.api.version>3.2.0-m8</lib.jdo.api.version>
+        <lib.jersey.version>2.27</lib.jersey.version>
         <lib.jsp.api.version>2.2</lib.jsp.api.version>
-        <lib.jsonwebtoken.version>0.9.0</lib.jsonwebtoken.version>
+        <lib.jsonwebtoken.version>0.9.1</lib.jsonwebtoken.version>
         <lib.jsr305.version>3.0.2</lib.jsr305.version>
         <lib.jsr353-impl.version>1.1.2</lib.jsr353-impl.version>
         <lib.jsr353-spec.version>1.1.2</lib.jsr353-spec.version>
-        <lib.jstl.version>1.2</lib.jstl.version>
+        <lib.jstl.version>1.2.5</lib.jstl.version>
         <lib.logback.version>1.2.3</lib.logback.version>
-        <lib.owasp.encoder.version>1.2.1</lib.owasp.encoder.version>
-        <lib.owasp.security-logging.version>1.1.3</lib.owasp.security-logging.version>
+        <lib.owasp.encoder.version>1.2.2</lib.owasp.encoder.version>
+        <lib.owasp.security-logging.version>1.1.6</lib.owasp.security-logging.version>
         <lib.slf4j.version>1.7.25</lib.slf4j.version>
-        <lib.swagger.jersey.version>1.5.17</lib.swagger.jersey.version>
+        <lib.swagger.jersey.version>1.5.21</lib.swagger.jersey.version>
+
+        <!-- Logback configuration - Used for Embedded Jetty profile -->
+        <logback.configuration.file>${project.build.directory}/classes/logback.xml</logback.configuration.file>
     </properties>
 
     <dependencies>
@@ -192,8 +267,8 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>jstl</artifactId>
+            <groupId>org.apache.taglibs</groupId>
+            <artifactId>taglibs-standard-impl</artifactId>
             <version>${lib.jstl.version}</version>
         </dependency>
         <!-- todo: update swagger when available -->
@@ -224,10 +299,22 @@
             <artifactId>datanucleus-rdbms</artifactId>
             <version>${lib.datanucleus.version}</version>
         </dependency>
+        <!--
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-dbcp2</artifactId>
-            <version>${lib.commons.dbcp2.version}</version>
+            <groupId>org.datanucleus</groupId>
+            <artifactId>datanucleus-jdo-query</artifactId>
+            <version>${lib.datanucleus-jdo-query.version}</version>
+        </dependency>
+        -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>${lib.hikaricp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>${lib.javassist.version}</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -285,6 +372,11 @@
         </dependency>
         <dependency>
             <groupId>org.owasp</groupId>
+            <artifactId>security-logging-common</artifactId>
+            <version>${lib.owasp.security-logging.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.owasp</groupId>
             <artifactId>security-logging-logback</artifactId>
             <version>${lib.owasp.security-logging.version}</version>
         </dependency>
@@ -303,8 +395,14 @@
         <dependency>
             <groupId>us.springett</groupId>
             <artifactId>alpine-executable-war</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
+            <version>${lib.alpine.executable.war.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <!-- JavaMail API -->
+        <dependency>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>${lib.javamail.version}</version>
         </dependency>
         <!-- Quality -->
         <dependency>
@@ -326,17 +424,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
 
     <prerequisites>
         <maven>3.1</maven>
@@ -384,14 +471,15 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.spdx</groupId>
-                <artifactId>spdx-maven-plugin</artifactId>
-                <version>${maven.spdx.plugin.version}</version>
+                <groupId>us.springett</groupId>
+                <artifactId>maven-uuid-generator</artifactId>
+                <version>${maven.uuidgenerator.plugin.version}</version>
                 <executions>
                     <execution>
-                        <id>build-spdx</id>
+                        <id>generate-uuid</id>
+                        <phase>initialize</phase>
                         <goals>
-                            <goal>createSPDX</goal>
+                            <goal>generate</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -448,7 +536,7 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>com.hpe.security.fortify.maven.plugin</groupId>
+                        <groupId>com.fortify.sca.plugins.maven</groupId>
                         <artifactId>sca-maven-plugin</artifactId>
                         <version>${maven.fortify.plugin.version}</version>
                         <configuration>
@@ -457,6 +545,7 @@
                             <debug>${plugin.fortify.sca.debug}</debug>
                             <verbose>${plugin.fortify.sca.verbose}</verbose>
                             <source>${plugin.fortify.sca.source.version}</source>
+                            <findbugs>${plugin.fortify.sca.findbugs}</findbugs>
                         </configuration>
                         <executions>
                             <execution>
@@ -509,8 +598,28 @@
                                 <format>${plugin.dependency-check.format}</format>
                                 <skipTestScope>${plugin.dependency-check.skipTestScope}</skipTestScope>
                                 <suppressionFile>${plugin.dependency-check.suppressionFile}</suppressionFile>
-                                <centralAnalyzerEnabled>${plugin.dependency-check.centralAnalyzerEnabled}</centralAnalyzerEnabled>
-                                <externalReport>${plugin.dependency-check.externalReport}</externalReport>
+                                <!-- Analyzer Configuration -->
+                                <archiveAnalyzerEnabled>${plugin.dependency-check.analyzer.archiveAnalyzerEnabled}</archiveAnalyzerEnabled>
+                                <assemblyAnalyzerEnabled>${plugin.dependency-check.analyzer.assemblyAnalyzerEnabled}</assemblyAnalyzerEnabled>
+                                <autoconfAnalyzerEnabled>${plugin.dependency-check.analyzer.autoconfAnalyzerEnabled}</autoconfAnalyzerEnabled>
+                                <bundleAuditAnalyzerEnabled>${plugin.dependency-check.analyzer.bundleAuditAnalyzerEnabled}</bundleAuditAnalyzerEnabled>
+                                <bundleAuditPath>${plugin.dependency-check.analyzer.bundleAuditPath}</bundleAuditPath>
+                                <centralAnalyzerEnabled>${plugin.dependency-check.analyzer.centralAnalyzerEnabled}</centralAnalyzerEnabled>
+                                <cmakeAnalyzerEnabled>${plugin.dependency-check.analyzer.cmakeAnalyzerEnabled}</cmakeAnalyzerEnabled>
+                                <cocoapodsAnalyzerEnabled>${plugin.dependency-check.analyzer.cocoapodsAnalyzerEnabled}</cocoapodsAnalyzerEnabled>
+                                <composerAnalyzerEnabled>${plugin.dependency-check.analyzer.composerAnalyzerEnabled}</composerAnalyzerEnabled>
+                                <jarAnalyzerEnabled>${plugin.dependency-check.analyzer.jarAnalyzer}</jarAnalyzerEnabled>
+                                <nexusAnalyzerEnabled>${plugin.dependency-check.analyzer.nexusAnalyzerEnabled}</nexusAnalyzerEnabled>
+                                <nexusUrl>${plugin.dependency-check.analyzer.nexusUrl}</nexusUrl>
+                                <nexusUsesProxy>${plugin.dependency-check.analyzer.nexusUsesProxy}</nexusUsesProxy>
+                                <nodeAnalyzerEnabled>${plugin.dependency-check.analyzer.nodeAnalyzerEnabled}</nodeAnalyzerEnabled>
+                                <nspAnalyzerEnabled>${plugin.dependency-check.analyzer.nspAnalyzerEnabled}</nspAnalyzerEnabled>
+                                <nuspecAnalyzerEnabled>${plugin.dependency-check.analyzer.nuspecAnalyzerEnabled}</nuspecAnalyzerEnabled>
+                                <opensslAnalyzerEnabled>${plugin.dependency-check.analyzer.opensslAnalyzerEnabled}</opensslAnalyzerEnabled>
+                                <pyDistributionAnalyzerEnabled>${plugin.dependency-check.analyzer.pyDistributionAnalyzerEnabled}</pyDistributionAnalyzerEnabled>
+                                <pyPackageAnalyzerEnabled>${plugin.dependency-check.analyzer.pyPackageAnalyzerEnabled}</pyPackageAnalyzerEnabled>
+                                <rubygemsAnalyzerEnabled>${plugin.dependency-check.analyzer.rubygemsAnalyzerEnabled}</rubygemsAnalyzerEnabled>
+                                <swiftPackageManagerAnalyzerEnabled>${plugin.dependency-check.analyzer.swiftPackageManagerAnalyzerEnabled}</swiftPackageManagerAnalyzerEnabled>
                             </configuration>
                         </plugin>
                     </plugins>
@@ -520,7 +629,7 @@
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>versions-maven-plugin</artifactId>
                         <version>${maven.versions.plugin.version}</version>
-                        <inherited>false</inherited>
+                        <inherited>true</inherited>
                         <executions>
                             <execution>
                                 <id>maven-versions</id>
@@ -530,6 +639,24 @@
                                     <goal>display-plugin-updates</goal>
                                     <goal>display-property-updates</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>${maven.dependency.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>tree-dependencies</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>analyze-only</goal>
+                                    <goal>tree</goal>
+                                </goals>
+                                <configuration>
+                                    <outputFile>${project.build.directory}/dependency-tree.txt</outputFile>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -568,6 +695,27 @@
                         </executions>
                     </plugin>
                     <plugin>
+                        <groupId>org.cyclonedx</groupId>
+                        <artifactId>cyclonedx-maven-plugin</artifactId>
+                        <version>${maven.cyclonedx.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>cyclonedx-aggregate</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>makeAggregateBom</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <includeCompileScope>${plugin.cyclonedx.includeCompileScope}</includeCompileScope>
+                            <includeProvidedScope>${plugin.cyclonedx.includeProvidedScope}</includeProvidedScope>
+                            <includeRuntimeScope>${plugin.cyclonedx.includeRuntimeScope}</includeRuntimeScope>
+                            <includeSystemScope>${plugin.cyclonedx.includeSystemScope}</includeSystemScope>
+                            <includeTestScope>${plugin.cyclonedx.includeTestScope}</includeTestScope>
+                        </configuration>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-site-plugin</artifactId>
                         <version>${maven.site.plugin.version}</version>
@@ -582,8 +730,28 @@
                                         <format>${plugin.dependency-check.format}</format>
                                         <skipTestScope>${plugin.dependency-check.skipTestScope}</skipTestScope>
                                         <suppressionFile>${plugin.dependency-check.suppressionFile}</suppressionFile>
-                                        <centralAnalyzerEnabled>${plugin.dependency-check.centralAnalyzerEnabled}</centralAnalyzerEnabled>
-                                        <externalReport>${plugin.dependency-check.externalReport}</externalReport>
+                                        <!-- Analyzer Configuration -->
+                                        <archiveAnalyzerEnabled>${plugin.dependency-check.analyzer.archiveAnalyzerEnabled}</archiveAnalyzerEnabled>
+                                        <assemblyAnalyzerEnabled>${plugin.dependency-check.analyzer.assemblyAnalyzerEnabled}</assemblyAnalyzerEnabled>
+                                        <autoconfAnalyzerEnabled>${plugin.dependency-check.analyzer.autoconfAnalyzerEnabled}</autoconfAnalyzerEnabled>
+                                        <bundleAuditAnalyzerEnabled>${plugin.dependency-check.analyzer.bundleAuditAnalyzerEnabled}</bundleAuditAnalyzerEnabled>
+                                        <bundleAuditPath>${plugin.dependency-check.analyzer.bundleAuditPath}</bundleAuditPath>
+                                        <centralAnalyzerEnabled>${plugin.dependency-check.analyzer.centralAnalyzerEnabled}</centralAnalyzerEnabled>
+                                        <cmakeAnalyzerEnabled>${plugin.dependency-check.analyzer.cmakeAnalyzerEnabled}</cmakeAnalyzerEnabled>
+                                        <cocoapodsAnalyzerEnabled>${plugin.dependency-check.analyzer.cocoapodsAnalyzerEnabled}</cocoapodsAnalyzerEnabled>
+                                        <composerAnalyzerEnabled>${plugin.dependency-check.analyzer.composerAnalyzerEnabled}</composerAnalyzerEnabled>
+                                        <jarAnalyzer>${plugin.dependency-check.analyzer.jarAnalyzer}</jarAnalyzer>
+                                        <nexusAnalyzerEnabled>${plugin.dependency-check.analyzer.nexusAnalyzerEnabled}</nexusAnalyzerEnabled>
+                                        <nexusUrl>${plugin.dependency-check.analyzer.nexusUrl}</nexusUrl>
+                                        <nexusUsesProxy>${plugin.dependency-check.analyzer.nexusUsesProxy}</nexusUsesProxy>
+                                        <nodeAnalyzerEnabled>${plugin.dependency-check.analyzer.nodeAnalyzerEnabled}</nodeAnalyzerEnabled>
+                                        <nspAnalyzerEnabled>${plugin.dependency-check.analyzer.nspAnalyzerEnabled}</nspAnalyzerEnabled>
+                                        <nuspecAnalyzerEnabled>${plugin.dependency-check.analyzer.nuspecAnalyzerEnabled}</nuspecAnalyzerEnabled>
+                                        <opensslAnalyzerEnabled>${plugin.dependency-check.analyzer.opensslAnalyzerEnabled}</opensslAnalyzerEnabled>
+                                        <pyDistributionAnalyzerEnabled>${plugin.dependency-check.analyzer.pyDistributionAnalyzerEnabled}</pyDistributionAnalyzerEnabled>
+                                        <pyPackageAnalyzerEnabled>${plugin.dependency-check.analyzer.pyPackageAnalyzerEnabled}</pyPackageAnalyzerEnabled>
+                                        <rubygemsAnalyzerEnabled>${plugin.dependency-check.analyzer.rubygemsAnalyzerEnabled}</rubygemsAnalyzerEnabled>
+                                        <swiftPackageManagerAnalyzerEnabled>${plugin.dependency-check.analyzer.swiftPackageManagerAnalyzerEnabled}</swiftPackageManagerAnalyzerEnabled>
                                     </configuration>
                                     <reportSets>
                                         <reportSet>
@@ -621,6 +789,24 @@
                 <defaultGoal>package</defaultGoal>
                 <plugins>
                     <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-and-rename-file</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <sourceFile>${logback.configuration.file}</sourceFile>
+                                    <destinationFile>${project.build.directory}/${project.build.finalName}/logback.xml</destinationFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-war-plugin</artifactId>
                         <version>${maven.war.plugin.version}</version>
@@ -639,12 +825,68 @@
                                     <artifactId>alpine-executable-war</artifactId>
                                     <type>jar</type>
                                 </overlay>
+                                <overlay>
+                                    <groupId>org.owasp</groupId>
+                                    <artifactId>security-logging-common</artifactId>
+                                    <type>jar</type>
+                                </overlay>
+                                <overlay>
+                                    <groupId>org.owasp</groupId>
+                                    <artifactId>security-logging-logback</artifactId>
+                                    <type>jar</type>
+                                </overlay>
                             </overlays>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>release</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>${maven.enforcer.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>enforce-java</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <requireJavaVersion>
+                                            <version>${maven.compiler.target}</version>
+                                        </requireJavaVersion>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven.gpg.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
     </profiles>
 
 </project>
